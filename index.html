@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+  html {
+    font-family: sans-serif;
+
+    --color-normal: 96,125,139;
+    --color-umlaut: 0,150,136;
+    --color-accent: 255,193,7;
+    --color-capital: 233,30,99;
+  }
+  #legend {
+    position: absolute;
+    top: 1em;
+    left: 2em;
+  }
+  .color {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+
+  #map {
+    display: flex;
+    max-height: 100vh;
+    max-width: 100vw;
+  }
+
+  path[id^="geo_1502"] {
+    stroke: rgba(var(--color-normal), 1);
+    stroke-width: 0.25px;
+    fill: rgba(var(--color-normal), 0.1);
+  }
+
+  path[id^="geo_1502"]:hover {
+    stroke-width: 2px;
+    fill: rgba(var(--color-normal), 0.25);
+  }
+
+  /* umlauts */
+  path[id^="geo_1502"][data-umlauts="1"] {
+    fill: rgba(var(--color-umlaut), 0.4);
+  }
+  path[id^="geo_1502"][data-umlauts="2"] {
+    fill: rgba(var(--color-umlaut), 1);
+  }
+
+  /* capital fake umlauts */
+  path[id^="geo_1502"][data-capital="true"] {
+    fill: rgba(var(--color-capital), 0.5);
+  }
+
+  /* french accents */
+  path[id^="geo_1502"][data-accents="1"] {
+    fill: rgba(var(--color-accent), 0.4);
+  }
+  path[id^="geo_1502"][data-accents="2"] {
+    fill: rgba(var(--color-accent), 1);
+  }
+
+  </style>
+</head>
+<body>
+  <dl id="legend">
+    <dt>Umlauts</dt>
+      <dd><span class="color" style="background:rgba(var(--color-umlaut), 0.4);"></span> One umlaut</dd>
+      <dd><span class="color" style="background:rgba(var(--color-umlaut), 1);"></span> Two umlauts</dd>
+
+    <dt>Capital Umlauts</dt>
+      <dd><span class="color" style="background:rgba(var(--color-capital), 0.5);"></span> (Ae, Ue, Oe)</dd>
+
+    <dt>Accents</dt>
+      <dd><span class="color" style="background:rgba(var(--color-accent), 0.4);"></span> One accent</dd>
+      <dd><span class="color" style="background:rgba(var(--color-accent), 1);"></span> Two accents</dd>
+
+    <dt>Source</dt>
+      <dd><cite><a href="https://www.atlas.bfs.admin.ch/maps/13/de/15739_229_228_227/24617.html">atlas.bfs.admin.ch</a></cite></dd>
+  </dl>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/@popperjs/core@2"></script>
+  <script src="https://unpkg.com/tippy.js@6"></script>
+  <script>
+  (async () => {
+    const mapElement = document.getElementById('map');
+    const map = await fetch('./gemeinden2021.svg');
+    mapElement.innerHTML = await map.text();
+
+    const svg = mapElement.querySelector('svg');
+    svg.setAttribute('width', mapElement.clientWidth);
+    svg.setAttribute('height', mapElement.clientHeight);
+
+    const jsonData = await fetch('./gemeinden2021.json');
+    const data = await jsonData.json();
+
+    const towns = data['1147']['111'];
+
+    const notUmlauts = /[^ÄäÖöÜü]/g;
+    const notFrench = /[^ÀàÂâÆæÇçÉéÈèÊêËëÎîÏïÔôŒœÙùÛûŸÿ]/g; // not including Üü
+    const capitalUmlaut = /^(Ae|Oe|Ue)/;
+    const counts = {};
+
+    const start = performance.now();
+
+    for (const [id, value] of Object.entries(towns)) {
+      const num = id.replace('label_', '');
+      const elem = document.querySelector(`path[id="geo_1502_${num}"]`);
+      if (elem) {
+        const name = value.value;
+        const umlauts = name.replace(notUmlauts, '').length;
+        const accents = name.replace(notFrench, '').length;
+        elem.dataset.tippyContent = name;
+        elem.dataset.umlauts = umlauts.toString();
+        elem.dataset.accents = accents.toString();
+        if (capitalUmlaut.test(name)) {
+          elem.dataset.capital = 'true';
+        }
+      }
+    }
+
+    const end = performance.now();
+    console.log(`Done in ${end - start}ms`);
+    tippy('[data-tippy-content]');
+
+  })();
+  </script>
+
+</body>
+</html>
